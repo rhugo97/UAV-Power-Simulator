@@ -13,7 +13,7 @@ c=3e8 # speed of light in vaccum in m/s
 Pt= 20 #power transmitted dBm
 SNR= 30 #desired SNR
 noise= -85 #noise floor -85 dBm
-step=1
+step=1 #in the points search
 
 exponent= (-SNR-noise+Pt+20*math.log10(c/(4*freq*math.pi)))/20
 
@@ -145,18 +145,77 @@ for j in validPoints:
 
 #find the centroid for the ideal position
 
-xideal=[j[0] for j in pointsArea]
-yideal=[j[1] for j in pointsArea]
+xarray=[j[0] for j in pointsArea]
+yarray=[j[1] for j in pointsArea]
 
-idealPos=[sum(xideal)/len(pointsArea),sum(yideal)/len(pointsArea),desiredAltitude]
+idealPos=[sum(xarray)/len(pointsArea),sum(yarray)/len(pointsArea),desiredAltitude]
 
 print("Ideal Position="+str(idealPos))
 
 #define points
 
+ymin=min(yarray)
+ymax=max(yarray)
 
+xymin=[] #improve variable names
+xymax=[] #same
 
+for j in pointsArea:
+    if(j[1]==ymin):
+        xymin.append(j[0])
+    if(j[1]==ymax):
+        xymax.append(j[0])
 
+#trajectory points
+p1=[min(xymin),ymin,desiredAltitude]
+p2=[max(xymin),ymin,desiredAltitude]
+p3=[min(xymax),ymax,desiredAltitude]
+p4=[max(xymax),ymax,desiredAltitude]
+
+#define lines 
+lz=[desiredAltitude,desiredAltitude]
+#between p1 and p2
+l1x=[p1[0],p2[0]]
+l1y=[p1[1],p2[1]]
+#between p3 and p4
+l2x=[p3[0],p4[0]]
+l2y=[p3[1],p3[1]]
+#between p1 and ideal
+l3x=[p1[0],idealPos[0]]
+l3y=[p1[1],idealPos[1]]
+#between p2 and ideal
+l4x=[p2[0],idealPos[0]]
+l4y=[p2[1],idealPos[1]]
+#between p3 and ideal
+l5x=[p3[0],idealPos[0]]
+l5y=[p3[1],idealPos[1]]
+#between p4 and ideal
+l6x=[p4[0],idealPos[0]]
+l6y=[p4[1],idealPos[1]]
+#plot all of them
+ax.plot(l1x,l1y,lz)
+ax.plot(l2x,l2y,lz)
+ax.plot(l3x,l3y,lz)
+ax.plot(l4x,l4y,lz)
+ax.plot(l5x,l5y,lz)
+ax.plot(l6x,l6y,lz)
+
+#trajectory plot
+
+fig = plt.figure(4)
+
+ax = plt.axes(projection='3d')
+ax.set_title('Trajectory Line')
+ax.set_xlabel('X')
+ax.set_ylabel('Y')
+ax.set_zlabel('Z')
+
+ax.plot(l1x,l1y,lz)
+ax.plot(l2x,l2y,lz)
+ax.plot(l3x,l3y,lz)
+ax.plot(l4x,l4y,lz)
+ax.plot(l5x,l5y,lz)
+ax.plot(l6x,l6y,lz)
 
 
 plt.show()
