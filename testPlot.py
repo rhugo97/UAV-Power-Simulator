@@ -291,30 +291,35 @@ y_pos = np.arange(len(ypart))
 plt.ylabel('Energy Consumed (Joule)')
 plt.bar(y_pos,ypart)
 plt.xticks(y_pos,xpart)
-""""
+
 #check if longer a trajectory reduces energy consumption compared to hovering
 
 energyV=[]
 energyH=[]
+xpart=[]
+energyRatio=[]
 i=1
-while i<=15:
+while i<=30:
     energyV.append(i*minPower+4*powerHover)
     energyH.append((i+4)*powerHover)
+    energyRatio.append(energyV[i-1]/energyH[i-1])
+    xpart.append(i+4)
     i+=1
 
 fig = plt.figure(6)
-bar_width = 0.35
-index=np.arange(i)
 
-rects1 = plt.bar(index,energyV,bar_width,color="g",label="Trajectory")
-rects2 = plt.bar(index+bar_width,energyH,bar_width,color="b",label="Hovering")
-
+plt.plot(xpart,energyV,label="Trajectory")
+plt.plot(xpart,energyH,label="Hovering")
 plt.xlabel('Time(s)')
 plt.ylabel('Energy Consumed(Joule)')
 plt.title('Variation of energy consumption')
-plt.xticks(index + bar_width, ('A', 'B', 'C', 'D'))
 plt.legend()
-"""
+
+fig= plt.figure(7)
+plt.plot(xpart,energyRatio)
+plt.xlabel('Time(s)')
+plt.ylabel('Ratio)')
+plt.title('Energy Consumed (Trajectory/Hovering)')
 
 
 plt.show()
