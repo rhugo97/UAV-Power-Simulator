@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import collections
 from collections import Counter
+from scipy import optimize
 
 #free space path loss
 
@@ -14,6 +15,19 @@ Pt= 20 #power transmitted dBm
 SNR= 30 #desired SNR
 noise= -85 #noise floor -85 dBm
 step=1 #in the points search
+
+#variables to calculate energy consumption
+rho=1.225
+W=20
+R=0.4
+A=0.503
+omega=300
+Utip=120
+d0=0.6
+k=0.1
+V0=4.03
+delta=0.012
+s=0.05
 
 exponent= (-SNR-noise+Pt+20*math.log10(c/(4*freq*math.pi)))/20
 
@@ -167,31 +181,31 @@ for j in pointsArea:
         xymax.append(j[0])
 
 #trajectory points
-p1=[min(xymin),ymin,desiredAltitude]
-p2=[max(xymin),ymin,desiredAltitude]
-p3=[min(xymax),ymax,desiredAltitude]
-p4=[max(xymax),ymax,desiredAltitude]
+point1=[min(xymin),ymin,desiredAltitude]
+point2=[max(xymin),ymin,desiredAltitude]
+point3=[min(xymax),ymax,desiredAltitude]
+point4=[max(xymax),ymax,desiredAltitude]
 
 #define lines 
 lz=[desiredAltitude,desiredAltitude]
 #between p1 and p2
-l1x=[p1[0],p2[0]]
-l1y=[p1[1],p2[1]]
+l1x=[point1[0],point2[0]]
+l1y=[point1[1],point2[1]]
 #between p3 and p4
-l2x=[p3[0],p4[0]]
-l2y=[p3[1],p3[1]]
+l2x=[point3[0],point4[0]]
+l2y=[point3[1],point3[1]]
 #between p1 and ideal
-l3x=[p1[0],idealPos[0]]
-l3y=[p1[1],idealPos[1]]
+l3x=[point1[0],idealPos[0]]
+l3y=[point1[1],idealPos[1]]
 #between p2 and ideal
-l4x=[p2[0],idealPos[0]]
-l4y=[p2[1],idealPos[1]]
+l4x=[point2[0],idealPos[0]]
+l4y=[point2[1],idealPos[1]]
 #between p3 and ideal
-l5x=[p3[0],idealPos[0]]
-l5y=[p3[1],idealPos[1]]
+l5x=[point3[0],idealPos[0]]
+l5y=[point3[1],idealPos[1]]
 #between p4 and ideal
-l6x=[p4[0],idealPos[0]]
-l6y=[p4[1],idealPos[1]]
+l6x=[point4[0],idealPos[0]]
+l6y=[point4[1],idealPos[1]]
 #plot all of them
 ax.plot(l1x,l1y,lz)
 ax.plot(l2x,l2y,lz)
@@ -216,6 +230,91 @@ ax.plot(l3x,l3y,lz)
 ax.plot(l4x,l4y,lz)
 ax.plot(l5x,l5y,lz)
 ax.plot(l6x,l6y,lz)
+
+#calculations for energy consumption
+
+P0=(delta/8)*rho*s*A*math.pow(omega,3)*math.pow(R,3)
+Pi=(1+k)*(math.pow(W,3/2)/math.sqrt(2*rho*A))
+
+print("P0="+str(P0))
+print("P1="+str(Pi))
+
+def P(V):
+    firstElement= P0*(1+(3*math.pow(V,2)/(math.pow(Utip,2))))
+    square=1+(math.pow(V,4)/(4*math.pow(V0,4)))
+    secondElement=Pi*math.pow((math.sqrt(square)-(math.pow(V,2)/(2*math.pow(V0,2)))),1/2)
+    thirdElement=(1/2)*d0*rho*s*A*math.pow(V,3)
+    return firstElement+secondElement+thirdElement
+
+
+minVelocity=optimize.fmin(P,0)
+minPower=P(minVelocity[0])
+powerHover=P(0)
+
+
+print("Minumum Velocity="+str(minVelocity[0]))
+print("Minimum Power="+str(minPower))
+
+#begin calculations for power consumption during trajectory
+
+pn1=np.array(point1)
+pn2=np.array(point2)
+pn3=np.array(point3)
+pn4=np.array(point4)
+pnI=np.array(idealPos)
+
+
+d1=np.linalg.norm(pnI-pn1)
+d2=np.linalg.norm(pnI-pn2)
+d3=np.linalg.norm(pnI-pn3)
+d4=np.linalg.norm(pnI-pn4)
+d12=np.linalg.norm(pn2-pn1)
+d34=np.linalg.norm(pn4-pn3)
+
+
+timeTrajectory=(d1/minVelocity)+(d2/minVelocity)+(d3/minVelocity)+(d4/minVelocity)+(d12/minVelocity)+(d34/minVelocity)
+powerConsumed=timeTrajectory*minPower+4*powerHover
+ifHovering=(timeTrajectory+4)*powerHover
+
+print(timeTrajectory)
+
+print("Trajectory="+str(powerConsumed[0]))
+print("Hovering="+str(ifHovering[0]))
+print("Compared(trajectory/hovergin):"+str(powerConsumed[0]/ifHovering[0]))
+
+
+
+fig = plt.figure(5)
+xpart=['Trajectory','Hovering']
+ypart=[powerConsumed[0],ifHovering[0]]
+y_pos = np.arange(len(ypart))
+plt.ylabel('Energy Consumed (Joule)')
+plt.bar(y_pos,ypart)
+plt.xticks(y_pos,xpart)
+""""
+#check if longer a trajectory reduces energy consumption compared to hovering
+
+energyV=[]
+energyH=[]
+i=1
+while i<=15:
+    energyV.append(i*minPower+4*powerHover)
+    energyH.append((i+4)*powerHover)
+    i+=1
+
+fig = plt.figure(6)
+bar_width = 0.35
+index=np.arange(i)
+
+rects1 = plt.bar(index,energyV,bar_width,color="g",label="Trajectory")
+rects2 = plt.bar(index+bar_width,energyH,bar_width,color="b",label="Hovering")
+
+plt.xlabel('Time(s)')
+plt.ylabel('Energy Consumed(Joule)')
+plt.title('Variation of energy consumption')
+plt.xticks(index + bar_width, ('A', 'B', 'C', 'D'))
+plt.legend()
+"""
 
 
 plt.show()
