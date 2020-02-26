@@ -29,10 +29,12 @@ V0=4.03
 delta=0.012
 s=0.05
 
-exponent= (-SNR-noise+Pt+20*math.log10(c/(4*freq*math.pi)))/20
 
-distance = math.pow(10, exponent) #radius for which the power recieved is equal or greater than the desired
+def distanceForSNR(SNR):
+    exponent= (-SNR-noise+Pt+20*math.log10(c/(4*freq*math.pi)))/20
+    return  math.pow(10, exponent) #radius for which the power recieved is equal or greater than the desired
 
+distance=distanceForSNR(SNR)
 print('radius='+str(distance))
 
 
@@ -81,7 +83,7 @@ ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
 
-#calculate points where all of the SNR is >=20dB
+#calculate points where all of the SNR is >= threshold
 
 i=0
 
@@ -276,11 +278,11 @@ timeTrajectory=(d1/minVelocity)+(d2/minVelocity)+(d3/minVelocity)+(d4/minVelocit
 powerConsumed=timeTrajectory*minPower+4*powerHover
 ifHovering=(timeTrajectory+4)*powerHover
 
-print(timeTrajectory)
+print("Time="+str(timeTrajectory[0]))
 
 print("Trajectory="+str(powerConsumed[0]))
 print("Hovering="+str(ifHovering[0]))
-print("Compared(trajectory/hovergin):"+str(powerConsumed[0]/ifHovering[0]))
+print("Compared(trajectory/hovering):"+str(powerConsumed[0]/ifHovering[0]))
 
 
 
@@ -318,8 +320,28 @@ plt.legend()
 fig= plt.figure(7)
 plt.plot(xpart,energyRatio)
 plt.xlabel('Time(s)')
-plt.ylabel('Ratio)')
+plt.ylabel('Ratio')
 plt.title('Energy Consumed (Trajectory/Hovering)')
+
+
+#how it impacts the total lifetime of the UAV, assuming that in hovering it lasts 30 min -- needs to be calculated after knowing the exact UAV
+
+timeHovering=1800 #in seconds
+totalCapacity=1800*powerHover #amount of joules that can be spent from the battery
+numberTrajectory=totalCapacity/powerConsumed[0] #number of times the trajectory is done
+print("Number of trajectories done: "+str(numberTrajectory))
+totalTrajectory=numberTrajectory*(timeTrajectory[0]+4) #total time the UAV lasts with the trajectory
+print("Total time adopting a trajectory="+str(totalTrajectory))
+
+#show changes (in min)
+
+fig= plt.figure(8)
+xpart=['Hovering','Trajectory']
+ypart=[timeHovering/60,totalTrajectory/60]
+y_pos = np.arange(len(ypart))
+plt.ylabel('Total Operational Time of the UAV (min)')
+plt.bar(y_pos,ypart)
+plt.xticks(y_pos,xpart)
 
 
 plt.show()
