@@ -1,5 +1,5 @@
 from mpl_toolkits import mplot3d
-
+import sys
 import math
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,9 +12,14 @@ from scipy import optimize
 freq=5180e6 # in Hz
 c=3e8 # speed of light in vaccum in m/s
 Pt= 20 #power transmitted dBm
-SNR= 30 #desired SNR
 noise= -85 #noise floor -85 dBm
 step=1 #in the points search
+
+#desired SNR
+if(len(sys.argv)>1):
+    SNR=float(sys.argv[1])
+else:
+    SNR=30 #default value
 
 #variables to calculate energy consumption
 rho=1.225
@@ -129,7 +134,13 @@ while xd <= xmax:
         yd+=step
     xd+=step
 
+print("Number of Valid Points: "+str(len(validPoints)))
+
 #plot for the points for the volume admissible
+
+if(len(validPoints)==0):
+    print("There is no intersection for a SNR of "+str(SNR)+"dB.")
+    exit()
 
 validAltitudes=[]
 
@@ -152,8 +163,7 @@ ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
 
-pointsArea=[] #points in the desired area
-
+pointsArea=[] #points in the desired altitude
 for j in validPoints:
     if(j[2]==desiredAltitude):
         ax.scatter(j[0],j[1],j[2],marker='o')
@@ -323,7 +333,6 @@ plt.xlabel('Time(s)')
 plt.ylabel('Ratio')
 plt.title('Energy Consumed (Trajectory/Hovering)')
 
-
 #how it impacts the total lifetime of the UAV, assuming that in hovering it lasts 30 min -- needs to be calculated after knowing the exact UAV
 
 timeHovering=1800 #in seconds
@@ -343,5 +352,63 @@ plt.ylabel('Total Operational Time of the UAV (min)')
 plt.bar(y_pos,ypart)
 plt.xticks(y_pos,xpart)
 
+print("Current SNR: "+str(SNR))
+
+#plot a circular trajectory
+
+fig = plt.figure(9)
+
+ax = plt.axes()
+ax.set_title('Area')
+ax.set_xlabel('X')
+ax.set_ylabel('Y')
+
+
+for j in pointsArea:
+    ax.scatter(j[0],j[1],j[2],marker='o')
+
+xideal=idealPos[0]
+yideal=idealPos[1]
+
+IdealArrayY=[]
+IdealArrayX=[]
+
+for j in pointsArea:
+    
+    if(j[0]==int(xideal)):
+        IdealArrayY.append(j[1])
+    if(j[1]==int(yideal)):
+        IdealArrayX.append(j[0])
+    ax.scatter(j[0],j[1],marker='o')
+
+
+yImax=max(IdealArrayY)
+yImin=min(IdealArrayY)
+xImax=max(IdealArrayX)
+xImin=min(IdealArrayX)
+
+
+posYmax=np.array((idealPos[0],yImax))
+posYmin=np.array((idealPos[0],yImin))
+posXmax=np.array((xImax,idealPos[1]))
+posXmin=np.array((xImin,idealPos[1]))
+idealPosNP=np.array((idealPos[0],idealPos[1]))
+print(posYmax)
+print(posYmin)
+print(idealPosNP)
+
+dists=[np.linalg.norm(posYmax-idealPosNP),np.linalg.norm(idealPosNP-posYmin),np.linalg.norm(posXmax-idealPosNP),np.linalg.norm(idealPosNP-posXmin)]
+
+circRadius=0
+
+circRadius=min(dists)
+
+theta= np.linspace(0, 2*np.pi, 100)
+
+x1 = idealPos[0] + circRadius*np.cos(theta)
+x2 = idealPos[1] + circRadius*np.sin(theta)
+
+ax.plot(x1, x2)
+ax.set_aspect(1)
 
 plt.show()
