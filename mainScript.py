@@ -224,7 +224,10 @@ def calculateValidPoints(pd,xmax,ymax,zmax,SNR_values):
 validPoints= []
 while(len(validPoints)==0):
     validPoints=calculateValidPoints(pd,xmax,ymax,zmax,SNR_values)
+    print(SNR_values)
     print("Number of Valid Points: "+str(len(validPoints)))
+    if(len(validPoints)!=0):
+        break
     print("There is no intersection for the current SNR values, therefore there is no valid position for the GW UAV.")
     i=0
     while i<len(SNR_values):
