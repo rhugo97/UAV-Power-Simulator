@@ -186,47 +186,52 @@ while i<len(x):
 
 print(pd)
 
+
 xmax,ymax,zmax=max(x),max(y),max(z)
-
-xd,yd,zd=0,0,0
-
-validPoints = []
-dist = [None]*len(x)
-
-while xd <= xmax:
-    yd=0
-    count=0
-    while yd <= ymax:
-        zd=0
+def calculateValidPoints(pd,xmax,ymax,zmax,SNR_values):
+    xd,yd,zd=0,0,0
+    validPoints = []
+    dist = [None]*len(x)
+    while xd <= xmax:
+        yd=0
         count=0
-        while zd <= zmax:
-            currentPoint=np.array((xd,yd,zd))
-            #print('Current Point ='+str(currentPoint))
-            i=0
+        while yd <= ymax:
+            zd=0
             count=0
-            while i<len(x):
-                dist[i] = np.linalg.norm(pd[i]-currentPoint)
-                if(dist[i]>0.0):
-                    Pr=Pt+20*math.log10(c/(4*freq*dist[i]*math.pi))
-                    #print(Pr)
-                    if((Pr-noise)>=SNR_values[i]):
-                        count+=1
-                #print("FMAP"+str(i)+" with SNR: "+str(SNR_values[i]))        
-                dist[i]=None
-                i+=1    
-            if(count==len(x)):
-                validPoints.append(currentPoint)
-            zd+=step
-        yd+=step
-    xd+=step
+            while zd <= zmax:
+                currentPoint=np.array((xd,yd,zd))
+                #print('Current Point ='+str(currentPoint))
+                i=0
+                count=0
+                while i<len(x):
+                    dist[i] = np.linalg.norm(pd[i]-currentPoint)
+                    if(dist[i]>0.0):
+                        Pr=Pt+20*math.log10(c/(4*freq*dist[i]*math.pi))
+                        #print(Pr)
+                        if((Pr-noise)>=SNR_values[i]):
+                            count+=1
+                    #print("FMAP"+str(i)+" with SNR: "+str(SNR_values[i]))        
+                    dist[i]=None
+                    i+=1    
+                if(count==len(x)):
+                    validPoints.append(currentPoint)
+                zd+=step
+            yd+=step
+        xd+=step
 
-print("Number of Valid Points: "+str(len(validPoints)))
+    return validPoints
+
+validPoints= []
+while(len(validPoints)==0):
+    validPoints=calculateValidPoints(pd,xmax,ymax,zmax,SNR_values)
+    print("Number of Valid Points: "+str(len(validPoints)))
+    print("There is no intersection for the current SNR values, therefore there is no valid position for the GW UAV.")
+    i=0
+    while i<len(SNR_values):
+        SNR_values[i]=SNR_values[i]-1
+        i+=1
 
 #plot for the points for the volume admissible
-
-if(len(validPoints)==0):
-    print("There is no intersection for the current SNR values, therefore there is no valid position for the GW UAV.")
-    exit()
 
 validAltitudes=[]
 
@@ -496,7 +501,5 @@ x2 = idealPos[1] + circRadius*np.sin(theta)
 
 ax.plot(x1, x2)
 ax.set_aspect(1)
-
-print(len(dicMCS))
 
 plt.show()
