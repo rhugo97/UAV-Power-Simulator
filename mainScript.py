@@ -16,11 +16,13 @@ noise= -85 #noise floor -85 dBm
 step=1 #in the points search
 maxMCS=780 # capacity of the shared wireless medium Mbits/s
 
+"""
 #desired SNR
 if(len(sys.argv)>1):
     SNR=float(sys.argv[1])
 else:
     SNR=30 #default value
+"""
 
 #variables to calculate energy consumption
 rho=1.225
@@ -35,6 +37,45 @@ V0=4.03
 delta=0.012
 s=0.05
 
+f=open("FMAPS.txt", "r")
+
+print(f.readline())
+nFMAPS=f.readline()
+print(nFMAPS)
+
+print(f.readline()) #read positions line
+
+FMAPS=[]
+x=[]
+y=[]
+z=[]
+i=0
+while i < int(nFMAPS):
+    FMAPS.append((f.readline().split(",")))
+    x.append(float(FMAPS[i][0]))
+    y.append(float(FMAPS[i][1]))
+    z.append(float(FMAPS[i][2]))
+    i+=1
+
+print(FMAPS)
+print(x)
+print(y)
+print(z)
+
+f.readline() #read traffic line
+
+trafficLine=f.readline().split(",")
+
+i=0
+traffic=[]
+while i<len(trafficLine):
+    traffic.append(float(trafficLine[i]))
+    if(traffic[i]>(maxMCS/len(x))):
+        traffic[i]=maxMCS/len(x)
+    i+=1
+
+
+print("Traffic: ",traffic)
 
 def distanceForSNR(SNR):
     exponent= (-SNR-noise+Pt+20*math.log10(c/(4*freq*math.pi)))/20
@@ -51,10 +92,6 @@ ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
 
-x= [0,30] #positions of the FMAPs in x
-y= [0,10] #positions of the FMAPs in y
-z= [0,20] #positions of the FMAPs in z
-
 #dictionary for SNR and Data rate relation
 
 dicMCS=[
@@ -70,13 +107,13 @@ dicMCS=[
     {"SNR":40,"data_rate":780/len(x)}
 ]
 
-traffic=[200,275] #traffic from the FMAPs in Mbit/s
+#traffic=[200,275] #traffic from the FMAPs in Mbit/s
 
 #map traffic to SNR
 
 data_rate_val=[None]*len(traffic)
-j=0
 
+j=0
 print(len(traffic))
 while j < len(traffic):
     i=0
@@ -87,10 +124,8 @@ while j < len(traffic):
             sums.append(current)
             if(min(sums)==current):
                 data_rate_val[j]=dicMCS[i].get("data_rate")
-        i+=1
-    if(j==1):
-        break    
-    j=+1
+        i+=1  
+    j+=1
 
 print(data_rate_val)
 SNR_values=[]
@@ -103,7 +138,7 @@ for j in data_rate_val:
         i+=1
 
 
-print(SNR_values)
+print("SNR values= ",SNR_values)
 #generate FMAPs
 i=0
 while i < len(x):
@@ -143,8 +178,7 @@ ax.set_zlabel('Z')
 i=0
 
 pd= [[]]*len(x)
-dist = [None]*len(x)
-print (dist)
+
 
 while i<len(x):
     pd[i]= np.array((x[i],y[i],z[i]))
@@ -157,6 +191,7 @@ xmax,ymax,zmax=max(x),max(y),max(z)
 xd,yd,zd=0,0,0
 
 validPoints = []
+dist = [None]*len(x)
 
 while xd <= xmax:
     yd=0
@@ -176,7 +211,7 @@ while xd <= xmax:
                     #print(Pr)
                     if((Pr-noise)>=SNR_values[i]):
                         count+=1
-                print("FMAP"+str(i)+" with SNR: "+str(SNR_values[i]))        
+                #print("FMAP"+str(i)+" with SNR: "+str(SNR_values[i]))        
                 dist[i]=None
                 i+=1    
             if(count==len(x)):

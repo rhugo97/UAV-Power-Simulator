@@ -1,0 +1,8 @@
+Number of FMAPs: 
+3
+Positions(x,y,z):
+0,0,0
+30,10,20
+10,20,30
+Traffic(Mbit/s):
+150,200,300
