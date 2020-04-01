@@ -1,4 +1,4 @@
-Number of FMAPs: 
+Number of FAPs: 
 3
 Positions(x,y,z):
 0,0,0
