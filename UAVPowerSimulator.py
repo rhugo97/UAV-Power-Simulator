@@ -16,14 +16,6 @@ noise= -85 #noise floor -85 dBm
 step=1 #in the points search
 maxMCS=780 # capacity of the shared wireless medium Mbits/s
 
-"""
-#desired SNR
-if(len(sys.argv)>1):
-    SNR=float(sys.argv[1])
-else:
-    SNR=30 #default value
-"""
-
 #variables to calculate energy consumption
 rho=1.225
 W=20
@@ -39,11 +31,10 @@ s=0.05
 
 f=open("FMAPS.txt", "r")
 
-print(f.readline())
+f.readline() #read numbers line
 nFMAPS=f.readline()
-print(nFMAPS)
 
-print(f.readline()) #read positions line
+f.readline() #read positions line
 
 FMAPS=[]
 x=[]
@@ -57,10 +48,6 @@ while i < int(nFMAPS):
     z.append(float(FMAPS[i][2]))
     i+=1
 
-print(FMAPS)
-print(x)
-print(y)
-print(z)
 
 f.readline() #read traffic line
 
@@ -74,20 +61,33 @@ while i<len(trafficLine):
         traffic[i]=maxMCS/len(x)
     i+=1
 
-
-print("Traffic: ",traffic)
-
 def distanceForSNR(SNR):
     exponent= (-SNR-noise+Pt+20*math.log10(c/(4*freq*math.pi)))/20
     return  math.pow(10, exponent) #radius for which the power recieved is equal or greater than the desired
 
-#distance=distanceForSNR(SNR)
+
+"""
+#figure for positions
+
+fig= plt.figure(12)
+
+ax = plt.axes(projection='3d')
+ax.set_title('FMAPs Position')
+ax.set_xlabel('X')
+ax.set_ylabel('Y')
+ax.set_zlabel('Z')
+
+#generate FAPs
+i=0
+while i < int(nFMAPS):
+    ax.scatter(x[i],y[i],z[i],marker='o', label="FAP"+str(i+1))
+    i+=1
+"""
 
 #figure for ranges
 fig = plt.figure(1)
 
 ax = plt.axes(projection='3d')
-ax.set_title('SNR for FMAPs')
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
@@ -127,7 +127,6 @@ while j < len(traffic):
         i+=1  
     j+=1
 
-print(data_rate_val)
 SNR_values=[]
 for j in data_rate_val:
     i=0
@@ -142,7 +141,7 @@ print("SNR values= ",SNR_values)
 #generate FMAPs
 i=0
 while i < len(x):
-    ax.scatter(x[i],y[i],z[i],marker='o', label="FMAP"+str(i+1))
+    ax.scatter(x[i],y[i],z[i],marker='o', label="FAP"+str(i+1))
     i+=1
 
 #generate spheres
@@ -155,24 +154,20 @@ while i<len(x):
     xs = x[i] + distance * np.outer(np.cos(u), np.sin(v))
     ys = y[i] + distance* np.outer(np.sin(u), np.sin(v))
     zs = z[i] + distance * np.outer(np.ones(np.size(u)), np.cos(v))
-    ax.plot_surface(xs, ys, zs,  rstride=4, cstride=4)
-    print(distance)
-    print(SNR_values[i])
-
+    ax.plot_surface(xs, ys, zs,  rstride=4, cstride=4,alpha=0.5)
     i+=1
 
 leg=ax.legend()
 
-
+"""
 #figure for desired area
 fig = plt.figure(2)
 
 ax = plt.axes(projection='3d')
-ax.set_title('Intersection of SNR>=threshold')
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
-
+"""
 #calculate points where all of the SNR is >= threshold
 
 i=0
@@ -186,7 +181,7 @@ while i<len(x):
 
 print(pd)
 
-
+#beginning of PREP
 xmax,ymax,zmax=max(x),max(y),max(z)
 def calculateValidPoints(pd,xmax,ymax,zmax,SNR_values):
     xd,yd,zd=0,0,0
@@ -221,6 +216,7 @@ def calculateValidPoints(pd,xmax,ymax,zmax,SNR_values):
 
     return validPoints
 
+happened=0
 validPoints= []
 while(len(validPoints)==0):
     validPoints=calculateValidPoints(pd,xmax,ymax,zmax,SNR_values)
@@ -231,15 +227,18 @@ while(len(validPoints)==0):
     print("There is no intersection for the current SNR values, therefore there is no valid position for the GW UAV.")
     i=0
     while i<len(SNR_values):
+        happened=1
         SNR_values[i]=SNR_values[i]-1
         i+=1
+
+print("SNR values= ",SNR_values)
 
 #plot for the points for the volume admissible
 
 validAltitudes=[]
 
 for j in validPoints:
-    ax.scatter(j[0],j[1],j[2],marker='o')
+    #ax.scatter(j[0],j[1],j[2],marker='o')
     validAltitudes.append(j[2])
 
 occurences= Counter(validAltitudes) #find the altitude with the highest area
@@ -247,8 +246,28 @@ desiredAltitude= occurences.most_common(1)[0][0]
 
 print("Desired Altitude="+str(desiredAltitude))
 
-#plot area for desired altitude
+if(happened!=0):
+    fig = plt.figure(13)
 
+    ax = plt.axes(projection='3d')
+    ax.set_title('SNR for FMAPs')
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    i=0
+    while i<len(x):
+        u = np.linspace(0, 2 * np.pi, 100)
+        v = np.linspace(0, np.pi, 100)
+
+        distance=distanceForSNR(SNR_values[i])
+        xs = x[i] + distance * np.outer(np.cos(u), np.sin(v))
+        ys = y[i] + distance* np.outer(np.sin(u), np.sin(v))
+        zs = z[i] + distance * np.outer(np.ones(np.size(u)), np.cos(v))
+        ax.plot_surface(xs, ys, zs,  rstride=4, cstride=4)
+        i+=1
+
+#plot area for desired altitude
+"""
 fig = plt.figure(3)
 
 ax = plt.axes(projection='3d')
@@ -256,11 +275,11 @@ ax.set_title('Area for Desired Altitude')
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
-
+"""
 pointsArea=[] #points in the desired altitude
 for j in validPoints:
     if(j[2]==desiredAltitude):
-        ax.scatter(j[0],j[1],j[2],marker='o')
+       # ax.scatter(j[0],j[1],j[2],marker='o')
         pointsArea.append(j)
 
 
@@ -280,10 +299,10 @@ ymax=max(yarray)
 xmax=max(xarray)
 xmin=min(xarray)
 
-xymin=[] #improve variable names
-xymax=[] #same
-yxmin=[] #:)
-yxmax=[] #:)
+xymin=[] 
+xymax=[] 
+yxmin=[] 
+yxmax=[] 
 
 for j in pointsArea:
     if(j[0]==xmin):
@@ -295,9 +314,7 @@ for j in pointsArea:
     if(j[1]==ymax):
         xymax.append(j[0])
 
-sumxy=len(xymin)+len(xymax)
-sumyx=len(yxmin)+len(yxmax)
-highestPoints = max(sumxy,sumyx)
+
 
 def calculateDistanceT(point1,point2,point3,point4,pointI):
     pn1=np.array(point1)
@@ -361,17 +378,18 @@ l5y[0]=[point3T1[1],idealPos[1]]
 #between p4 and ideal
 l6x[0]=[point4T1[0],idealPos[0]]
 l6y[0]=[point4T1[1],idealPos[1]]
-#plot all of them
+"""#plot all of them
 ax.plot(l1x[0],l1y[0],lz)
 ax.plot(l2x[0],l2y[0],lz)
 ax.plot(l3x[0],l3y[0],lz)
 ax.plot(l4x[0],l4y[0],lz)
 ax.plot(l5x[0],l5y[0],lz)
 ax.plot(l6x[0],l6y[0],lz)
-
+"""
 distanceT1=calculateDistanceT(point1T1,point2T1,point3T1,point4T1,idealPos)
 
 #trajectory 2
+"""
 fig = plt.figure(4)
 
 ax = plt.axes(projection='3d')
@@ -381,6 +399,7 @@ ax.set_ylabel('Y')
 ax.set_zlabel('Z')
 for j in pointsArea:
     ax.scatter(j[0],j[1],j[2],marker='o')
+"""
 
 point1T2=[xmin,min(yxmin),desiredAltitude]
 point2T2=[xmin,max(yxmin),desiredAltitude]
@@ -409,17 +428,17 @@ l5y[1]=[point3T2[1],idealPos[1]]
 #between p4 and ideal
 l6x[1]=[point4T2[0],idealPos[0]]
 l6y[1]=[point4T2[1],idealPos[1]]
-#plot all of them
+"""#plot all of them
 ax.plot(l1x[1],l1y[1],lz)
 ax.plot(l2x[1],l2y[1],lz)
 ax.plot(l3x[1],l3y[1],lz)
 ax.plot(l4x[1],l4y[1],lz)
 ax.plot(l5x[1],l5y[1],lz)
 ax.plot(l6x[1],l6y[1],lz)
-
+"""
 
 #trajectory 3
-
+"""
 fig = plt.figure(5)
 
 ax = plt.axes(projection='3d')
@@ -427,11 +446,45 @@ ax.set_title('Area for Desired Altitude')
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
+
 for j in pointsArea:
     ax.scatter(j[0],j[1],j[2],marker='o')
+"""
+idealPosXfloor=math.floor(idealPos[0])
+idealPosXceil=math.ceil(idealPos[0])
+idealPosYfloor=math.floor(idealPos[1])
+idealPosYceil=math.ceil(idealPos[1])
+yinIdealXfloor=[]
+yinIdealXceil=[]
+xinIdealYfloor=[]
+xinIdealYceil=[]
+for j in pointsArea:
+    if(j[0]==idealPosXfloor):
+        yinIdealXfloor.append(j[1])
+    if(j[0]==idealPosXceil):
+        yinIdealXceil.append(j[1])
 
-xidealPosR=round(idealPos[0])
-yidealPosR=round(idealPos[1])
+if(len(yinIdealXfloor)>len(yinIdealXceil)):
+    xidealPosR=idealPosXfloor
+if(len(yinIdealXfloor)<len(yinIdealXceil)):
+    xidealPosR=idealPosXceil
+if(len(yinIdealXceil)==len(yinIdealXfloor)):
+    xidealPosR=round(idealPos[0])
+
+for j in pointsArea:
+    if(j[1]==idealPosYfloor):
+        xinIdealYfloor.append(j[0])
+    if(j[1]==idealPosYceil):
+        xinIdealYceil.append(j[0])
+
+if(len(xinIdealYfloor)>len(xinIdealYceil)):
+    yidealPosR=idealPosYfloor
+if(len(xinIdealYfloor)>len(xinIdealYceil)):
+    yidealPosR=idealPosYceil
+if(len(xinIdealYceil)==len(xinIdealYfloor)):
+    yidealPosR=round(idealPos[1])
+
+    
 yinXideal=[]
 xinYideal=[]
 
@@ -474,14 +527,14 @@ l5y[2]=[point3T3[1],idealPos[1]]
 #between p4 and ideal
 l6x[2]=[point4T3[0],idealPos[0]]
 l6y[2]=[point4T3[1],idealPos[1]]
-#plot all of them
+"""#plot all of them
 ax.plot(l1x[2],l1y[2],lz)
 ax.plot(l2x[2],l2y[2],lz)
 ax.plot(l3x[2],l3y[2],lz)
 ax.plot(l4x[2],l4y[2],lz)
 ax.plot(l5x[2],l5y[2],lz)
 ax.plot(l6x[2],l6y[2],lz)
-
+"""
 
 
 #trajectory plot for the chosen path
@@ -504,22 +557,20 @@ ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
 
-ax.plot(l1x[chosen],l1y[chosen],lz)
-ax.plot(l2x[chosen],l2y[chosen],lz)
-ax.plot(l3x[chosen],l3y[chosen],lz)
-ax.plot(l4x[chosen],l4y[chosen],lz)
-ax.plot(l5x[chosen],l5y[chosen],lz)
-ax.plot(l6x[chosen],l6y[chosen],lz)
+ax.plot(l3x[chosen],l3y[chosen],lz,label="Pc->P1")
+ax.plot(l1x[chosen],l1y[chosen],lz,label="P1->P2")
+ax.plot(l4x[chosen],l4y[chosen],lz,label="P2->Pc")
+ax.plot(l5x[chosen],l5y[chosen],lz,label="Pc->P3")
+ax.plot(l2x[chosen],l2y[chosen],lz,label="P3->P4")
+ax.plot(l6x[chosen],l6y[chosen],lz,label="P4->Pc")
+ax.legend()
 
 print("Trajectory ",chosen+1, "was selected")
-
+#end of PREP
 #calculations for energy consumption
 
 P0=(delta/8)*rho*s*A*math.pow(omega,3)*math.pow(R,3)
 Pi=(1+k)*(math.pow(W,3/2)/math.sqrt(2*rho*A))
-
-print("P0="+str(P0))
-print("P1="+str(Pi))
 
 def P(V):
     firstElement= P0*(1+(3*math.pow(V,2)/(math.pow(Utip,2))))
@@ -603,71 +654,12 @@ print("Total time adopting a trajectory="+str(totalTrajectory))
 #show changes (in min)
 
 fig= plt.figure(10)
-xpart=['Hovering','Trajectory']
+xpart=['Baseline','PREP']
 ypart=[timeHovering/60,totalTrajectory/60]
 y_pos = np.arange(len(ypart))
 plt.ylabel('Total Operational Time of the UAV (min)')
 plt.bar(y_pos,ypart)
 plt.xticks(y_pos,xpart)
-
-#print("Current SNR: "+str(SNR))
-
-#plot a circular trajectory
-
-fig = plt.figure(11)
-
-ax = plt.axes()
-ax.set_title('Area')
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
-
-
-for j in pointsArea:
-    ax.scatter(j[0],j[1],j[2],marker='o')
-
-xideal=idealPos[0]
-yideal=idealPos[1]
-
-IdealArrayY=[]
-IdealArrayX=[]
-
-for j in pointsArea:
-    
-    if(j[0]==int(xideal)):
-        IdealArrayY.append(j[1])
-    if(j[1]==int(yideal)):
-        IdealArrayX.append(j[0])
-    ax.scatter(j[0],j[1],marker='o')
-
-
-yImax=max(IdealArrayY)
-yImin=min(IdealArrayY)
-xImax=max(IdealArrayX)
-xImin=min(IdealArrayX)
-
-
-posYmax=np.array((idealPos[0],yImax))
-posYmin=np.array((idealPos[0],yImin))
-posXmax=np.array((xImax,idealPos[1]))
-posXmin=np.array((xImin,idealPos[1]))
-idealPosNP=np.array((idealPos[0],idealPos[1]))
-print(posYmax)
-print(posYmin)
-print(idealPosNP)
-
-dists=[np.linalg.norm(posYmax-idealPosNP),np.linalg.norm(idealPosNP-posYmin),np.linalg.norm(posXmax-idealPosNP),np.linalg.norm(idealPosNP-posXmin)]
-
-circRadius=0
-
-circRadius=min(dists)
-
-theta= np.linspace(0, 2*np.pi, 100)
-
-x1 = idealPos[0] + circRadius*np.cos(theta)
-x2 = idealPos[1] + circRadius*np.sin(theta)
-
-ax.plot(x1, x2)
-ax.set_aspect(1)
 
 
 plt.show()
