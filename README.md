@@ -22,4 +22,4 @@ To calculate the power consumption the following variables are necessary (relate
   V0=4.03 #mean rotor induced velocity in hover
   delta=0.012 #profile drag coefficient
   s=0.05 #rotor solidity
-  
+These values should be updated according to the diserid UAV specifications
