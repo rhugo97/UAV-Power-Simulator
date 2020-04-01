@@ -29,7 +29,7 @@ V0=4.03
 delta=0.012
 s=0.05
 
-f=open("FMAPS.txt", "r")
+f=open("FAPS.txt", "r")
 
 f.readline() #read numbers line
 nFMAPS=f.readline()
