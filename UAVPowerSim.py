@@ -1,4 +1,5 @@
 from mpl_toolkits import mplot3d
+from mpl_toolkits.mplot3d import Axes3D
 import sys
 import math
 import numpy as np
@@ -11,7 +12,7 @@ from scipy import optimize
 
 freq=5180e6 # in Hz
 c=3e8 # speed of light in vaccum in m/s
-Pt= 20 #power transmitted dBm
+Pt= 20 #power transmitted dBm - set as the maximum for Wi-Fi
 noise= -85 #noise floor -85 dBm
 step=1 #in the points search
 maxMCS=780 # capacity of the shared wireless medium Mbits/s
@@ -29,7 +30,7 @@ V0=4.03
 delta=0.012
 s=0.05
 
-f=open("FAPS.txt", "r")
+f=open("FMAPS.txt", "r")
 
 f.readline() #read numbers line
 nFMAPS=f.readline()
@@ -65,7 +66,11 @@ def distanceForSNR(SNR):
     exponent= (-SNR-noise+Pt+20*math.log10(c/(4*freq*math.pi)))/20
     return  math.pow(10, exponent) #radius for which the power recieved is equal or greater than the desired
 
-
+"""
+x[1]=int(sys.argv[1])
+x[2]=float(x[1])/2
+y[2]=(float(1)/2) * math.sqrt(3) * x[2]
+"""
 """
 #figure for positions
 
@@ -136,8 +141,30 @@ for j in data_rate_val:
             SNR_values.append(dicMCS[i].get("SNR"))
         i+=1
 
+xToCalcPos=[]*len(SNR_values)
+xToCalcNeg=[]*len(SNR_values)
+yToCalcPos=[]*len(SNR_values)
+yToCalcNeg=[]*len(SNR_values)
+zToCalcPos=[]*len(SNR_values)
+zToCalcNeg=[]*len(SNR_values)
 
+j=0
+for i in SNR_values:
+    dist=distanceForSNR(i)
+    xToCalcPos.append(x[j]+math.floor(dist))
+    xToCalcNeg.append(x[j]-math.floor(dist))
+    yToCalcPos.append(y[j]+math.floor(dist))
+    yToCalcNeg.append(y[j]-math.floor(dist))
+    zToCalcPos.append(z[j]+math.floor(dist))
+    zToCalcNeg.append(z[j]-math.floor(dist))
+    j+=1
 print("SNR values= ",SNR_values)
+print(xToCalcPos)
+print(xToCalcNeg)
+print(yToCalcPos)
+print(yToCalcNeg)
+print(zToCalcPos)
+print(zToCalcNeg)
 #generate FMAPs
 i=0
 while i < len(x):
@@ -146,16 +173,21 @@ while i < len(x):
 
 #generate spheres
 i=0
+xs=[None]*int(nFMAPS)
+ys=[None]*int(nFMAPS)
+zs=[None]*int(nFMAPS)
 while i<len(x):
     u = np.linspace(0, 2 * np.pi, 100)
     v = np.linspace(0, np.pi, 100)
 
     distance=distanceForSNR(SNR_values[i])
-    xs = x[i] + distance * np.outer(np.cos(u), np.sin(v))
-    ys = y[i] + distance* np.outer(np.sin(u), np.sin(v))
-    zs = z[i] + distance * np.outer(np.ones(np.size(u)), np.cos(v))
-    ax.plot_surface(xs, ys, zs,  rstride=4, cstride=4,alpha=0.5)
+    print("Distance: ", distance)
+    xs[i] = x[i] + distance * np.outer(np.cos(u), np.sin(v))
+    ys[i] = y[i] + distance* np.outer(np.sin(u), np.sin(v))
+    zs[i] = z[i] + distance * np.outer(np.ones(np.size(u)), np.cos(v))
+    ax.plot_surface(xs[i], ys[i], zs[i],  rstride=4, cstride=4,alpha=0.5)
     i+=1
+
 
 leg=ax.legend()
 
@@ -182,16 +214,22 @@ while i<len(x):
 print(pd)
 
 #beginning of PREP
-xmax,ymax,zmax=max(x),max(y),max(z)
-def calculateValidPoints(pd,xmax,ymax,zmax,SNR_values):
-    xd,yd,zd=0,0,0
+xmax,ymax,zmax=max(xToCalcPos),math.floor(max(yToCalcPos)),max(zToCalcPos)
+xd,yd,zd=min(xToCalcNeg),min(yToCalcNeg),min(zToCalcNeg)
+print(xmax)
+print(xd)
+print(ymax)
+print(yd)
+print(zmax)
+print(zd)
+def calculateValidPoints(pd,xmax,ymax,zmax,xd,yd,zd,SNR_values):
     validPoints = []
     dist = [None]*len(x)
     while xd <= xmax:
-        yd=0
+        yd=min(yToCalcNeg)
         count=0
         while yd <= ymax:
-            zd=0
+            zd=min(zToCalcNeg)
             count=0
             while zd <= zmax:
                 currentPoint=np.array((xd,yd,zd))
@@ -217,21 +255,16 @@ def calculateValidPoints(pd,xmax,ymax,zmax,SNR_values):
     return validPoints
 
 happened=0
-validPoints= []
-while(len(validPoints)==0):
-    validPoints=calculateValidPoints(pd,xmax,ymax,zmax,SNR_values)
-    print(SNR_values)
-    print("Number of Valid Points: "+str(len(validPoints)))
-    if(len(validPoints)!=0):
-        break
-    print("There is no intersection for the current SNR values, therefore there is no valid position for the GW UAV.")
-    i=0
-    while i<len(SNR_values):
-        happened=1
-        SNR_values[i]=SNR_values[i]-1
-        i+=1
 
+validPoints=calculateValidPoints(pd,xmax,ymax,zmax,xd,yd,zd,SNR_values)
+   
+if(len(validPoints)==0):
+    print("No intersection was found")
+    exit()
+
+print("Length: ",len(validPoints))
 print("SNR values= ",SNR_values)
+print("Transmit Power: ",Pt)
 
 #plot for the points for the volume admissible
 
@@ -263,32 +296,34 @@ if(happened!=0):
         xs = x[i] + distance * np.outer(np.cos(u), np.sin(v))
         ys = y[i] + distance* np.outer(np.sin(u), np.sin(v))
         zs = z[i] + distance * np.outer(np.ones(np.size(u)), np.cos(v))
-        ax.plot_surface(xs, ys, zs,  rstride=4, cstride=4)
+        ax.plot_surface(xs, ys, zs,  rstride=4, cstride=4, alpha=0.5)
         i+=1
 
 #plot area for desired altitude
-"""
+
 fig = plt.figure(3)
 
 ax = plt.axes(projection='3d')
-ax.set_title('Area for Desired Altitude')
+
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
-"""
+
 pointsArea=[] #points in the desired altitude
 for j in validPoints:
     if(j[2]==desiredAltitude):
-       # ax.scatter(j[0],j[1],j[2],marker='o')
+        ax.scatter(j[0],j[1],j[2],marker='o')
         pointsArea.append(j)
 
 
+print("Points in area: ", len(pointsArea))
 #find the centroid for the ideal position
 
 xarray=[j[0] for j in pointsArea]
 yarray=[j[1] for j in pointsArea]
 
 idealPos=[sum(xarray)/len(pointsArea),sum(yarray)/len(pointsArea),desiredAltitude]
+idealPosnoZ=[sum(xarray)/len(pointsArea),sum(yarray)/len(pointsArea)]
 
 print("Ideal Position="+str(idealPos))
 
@@ -358,6 +393,13 @@ point2T1=[max(xymin),ymin,desiredAltitude]
 point3T1=[min(xymax),ymax,desiredAltitude]
 point4T1=[max(xymax),ymax,desiredAltitude]
 
+fig = plt.figure(15)
+
+ax = plt.axes(projection='3d')
+ax.set_xlabel('X')
+ax.set_ylabel('Y')
+ax.set_zlabel('Z')
+
 #define lines 
 lz=[desiredAltitude,desiredAltitude]
 #between p1 and p2
@@ -378,28 +420,25 @@ l5y[0]=[point3T1[1],idealPos[1]]
 #between p4 and ideal
 l6x[0]=[point4T1[0],idealPos[0]]
 l6y[0]=[point4T1[1],idealPos[1]]
-"""#plot all of them
+#plot all of them
 ax.plot(l1x[0],l1y[0],lz)
 ax.plot(l2x[0],l2y[0],lz)
 ax.plot(l3x[0],l3y[0],lz)
 ax.plot(l4x[0],l4y[0],lz)
 ax.plot(l5x[0],l5y[0],lz)
 ax.plot(l6x[0],l6y[0],lz)
-"""
+ax.legend()
 distanceT1=calculateDistanceT(point1T1,point2T1,point3T1,point4T1,idealPos)
 
 #trajectory 2
-"""
+
 fig = plt.figure(4)
 
 ax = plt.axes(projection='3d')
-ax.set_title('Area for Desired Altitude')
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
-for j in pointsArea:
-    ax.scatter(j[0],j[1],j[2],marker='o')
-"""
+
 
 point1T2=[xmin,min(yxmin),desiredAltitude]
 point2T2=[xmin,max(yxmin),desiredAltitude]
@@ -428,32 +467,32 @@ l5y[1]=[point3T2[1],idealPos[1]]
 #between p4 and ideal
 l6x[1]=[point4T2[0],idealPos[0]]
 l6y[1]=[point4T2[1],idealPos[1]]
-"""#plot all of them
+#plot all of them
 ax.plot(l1x[1],l1y[1],lz)
 ax.plot(l2x[1],l2y[1],lz)
 ax.plot(l3x[1],l3y[1],lz)
 ax.plot(l4x[1],l4y[1],lz)
 ax.plot(l5x[1],l5y[1],lz)
 ax.plot(l6x[1],l6y[1],lz)
-"""
+
 
 #trajectory 3
-"""
+
 fig = plt.figure(5)
 
 ax = plt.axes(projection='3d')
-ax.set_title('Area for Desired Altitude')
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
 
-for j in pointsArea:
-    ax.scatter(j[0],j[1],j[2],marker='o')
-"""
 idealPosXfloor=math.floor(idealPos[0])
+print(idealPosXfloor)
 idealPosXceil=math.ceil(idealPos[0])
+print(idealPosXceil)
 idealPosYfloor=math.floor(idealPos[1])
+print(idealPosYfloor)
 idealPosYceil=math.ceil(idealPos[1])
+print(idealPosYceil)
 yinIdealXfloor=[]
 yinIdealXceil=[]
 xinIdealYfloor=[]
@@ -464,6 +503,8 @@ for j in pointsArea:
     if(j[0]==idealPosXceil):
         yinIdealXceil.append(j[1])
 
+print(yinIdealXfloor)
+print(yinIdealXceil)
 if(len(yinIdealXfloor)>len(yinIdealXceil)):
     xidealPosR=idealPosXfloor
 if(len(yinIdealXfloor)<len(yinIdealXceil)):
@@ -476,10 +517,13 @@ for j in pointsArea:
         xinIdealYfloor.append(j[0])
     if(j[1]==idealPosYceil):
         xinIdealYceil.append(j[0])
+print(xinIdealYfloor)
+print(xinIdealYceil)
+print(len(pointsArea))
 
 if(len(xinIdealYfloor)>len(xinIdealYceil)):
     yidealPosR=idealPosYfloor
-if(len(xinIdealYfloor)>len(xinIdealYceil)):
+if(len(xinIdealYfloor)<len(xinIdealYceil)):
     yidealPosR=idealPosYceil
 if(len(xinIdealYceil)==len(xinIdealYfloor)):
     yidealPosR=round(idealPos[1])
@@ -527,15 +571,14 @@ l5y[2]=[point3T3[1],idealPos[1]]
 #between p4 and ideal
 l6x[2]=[point4T3[0],idealPos[0]]
 l6y[2]=[point4T3[1],idealPos[1]]
-"""#plot all of them
+#plot all of them
 ax.plot(l1x[2],l1y[2],lz)
 ax.plot(l2x[2],l2y[2],lz)
 ax.plot(l3x[2],l3y[2],lz)
 ax.plot(l4x[2],l4y[2],lz)
 ax.plot(l5x[2],l5y[2],lz)
 ax.plot(l6x[2],l6y[2],lz)
-"""
-
+ax.legend()
 
 #trajectory plot for the chosen path
 chosen=0
@@ -543,11 +586,29 @@ maxDistance=max(distanceT1,distanceT2,distanceT3)
 
 if(maxDistance==distanceT1):
     chosen=0
+    point1F=point1T1[0:2]
+    point2F=point2T1[0:2]
+    point3F=point3T1[0:2]
+    point4F=point4T1[0:2]
 if(maxDistance==distanceT2):
     chosen=1
+    point1F=point1T2[0:2]
+    point2F=point2T2[0:2]
+    point3F=point3T2[0:2]
+    point4F=point4T2[0:2]
+    
 if(maxDistance==distanceT3):
     chosen=2
+    point1F=point1T3[0:2]
+    point2F=point2T3[0:2]
+    point3F=point3T3[0:2]
+    point4F=point4T3[0:2]
 
+print("Central Point : ", idealPos)
+print("Point 1 : ", point1F)
+print("Point 2 : ", point2F)
+print("Point 3 : ", point3F)
+print("Point 4 : ", point4F)
 
 fig = plt.figure(6)
 
@@ -597,12 +658,38 @@ timeTrajectory=maxDistance/minVelocity
 powerConsumed=timeTrajectory*minPower+4*powerHover
 ifHovering=(timeTrajectory+4)*powerHover
 
+pn1=np.array(point1F)
+pn2=np.array(point2F)
+pn3=np.array(point3F)
+pn4=np.array(point4F)
+pnI=np.array(idealPosnoZ)
+print(pn1)
+print(pn2)
+print(pn3)
+print(pn4)
+print(pnI)
+
+timePoint1=30+np.linalg.norm(pn1-pnI)/minVelocity
+timePoint2=timePoint1+1+np.linalg.norm(pn2-pn1)/minVelocity
+timePointPC1=timePoint2+1+np.linalg.norm(pnI-pn2)/minVelocity
+timePoint3=timePointPC1+np.linalg.norm(pn3-pnI)/minVelocity
+timePoint4=timePoint3+1+np.linalg.norm(pn4-pn3)/minVelocity
+timePointPC2=timePoint4+1+np.linalg.norm(pnI-pn4)/minVelocity
+
+print("Is at Point C at 30 seconds")
+print("Reaches Point 1 at ",timePoint1)
+print("Reaches Point 2 at ",timePoint2)
+print("Reaches Central Point at ",timePointPC1)
+print("Reaches Point 3 at ",timePoint3)
+print("Reaches Point 4 at ",timePoint4)
+print("Reaches Central Point at ",timePointPC2)
+
 print("Time="+str(timeTrajectory[0]))
 
 print("Trajectory="+str(powerConsumed[0]))
 print("Hovering="+str(ifHovering[0]))
 print("Compared(trajectory/hovering):"+str(powerConsumed[0]/ifHovering[0]))
-
+print("Time performing trajectory: ",float(timePointPC2-30))
 
 
 fig = plt.figure(7)
@@ -661,5 +748,6 @@ plt.ylabel('Total Operational Time of the UAV (min)')
 plt.bar(y_pos,ypart)
 plt.xticks(y_pos,xpart)
 
+print("SNR: ",SNR_values)
 
 plt.show()
